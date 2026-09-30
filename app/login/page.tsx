@@ -36,23 +36,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-lg p-8">
+    <div className="min-h-screen flex items-center justify-center bg-page">
+      <div className="w-full max-w-md mx-4">
+        <div className="bg-surface border border-line rounded-lg p-8">
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold text-slate-900">Ripple</h1>
-            <p className="text-slate-600 mt-2">Trust layer for fragmented knowledge</p>
+            <h1 className="text-3xl font-semibold text-ink">Ripple</h1>
+            <p className="text-muted text-sm mt-2">Trust layer for fragmented knowledge</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              <div className="p-3 bg-bad-subtle border border-bad rounded-[4px] text-bad text-sm">
                 {error}
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-text mb-2">
                 Email
               </label>
               <input
@@ -60,38 +60,39 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="lotte@ripple.demo"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-line rounded-[4px] text-sm bg-surface text-text focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-0"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-text mb-2">
                 Password
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-line rounded-[4px] text-sm bg-surface text-text focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-0"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition disabled:opacity-50"
+              className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-2 rounded-[4px] transition disabled:opacity-50"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-slate-200">
-            <p className="text-xs text-slate-600 text-center mb-4">Demo users:</p>
-            <div className="space-y-2 text-xs text-slate-600">
-              <p><strong>lotte@ripple.demo</strong> (consultant)</p>
-              <p><strong>karim@ripple.demo</strong> (teamlead)</p>
-              <p><strong>pieter@ripple.demo</strong> (expert)</p>
+          <div className="mt-8 pt-8 border-t border-line">
+            <p className="text-xs text-muted text-center mb-4">Demo users:</p>
+            <div className="space-y-1 text-xs text-muted">
+              <p><strong className="text-text">lotte@ripple.demo</strong> consultant</p>
+              <p><strong className="text-text">karim@ripple.demo</strong> teamlead</p>
+              <p><strong className="text-text">pieter@ripple.demo</strong> expert</p>
             </div>
+            <p className="text-xs text-muted mt-3">Password: <code className="font-mono">&lt;name&gt;123</code></p>
           </div>
         </div>
       </div>

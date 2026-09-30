@@ -17,8 +17,9 @@ const schema = z.object({
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await getSession(req);
   if (!session) {
     return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
@@ -27,8 +28,8 @@ export async function POST(
     });
   }
 
-  const user = getUser(session.userId);
-  const question = getQuestion(params.id);
+  const user = getUser(session.userId) as any;
+  const question = getQuestion(id);
 
   if (!question || !user || !canVerify(user, question)) {
     return new NextResponse(JSON.stringify({ error: 'Not found' }), {

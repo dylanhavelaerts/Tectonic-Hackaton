@@ -11,8 +11,9 @@ const schema = z.object({
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await getSession(req);
   if (!session) {
     return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
@@ -21,8 +22,8 @@ export async function POST(
     });
   }
 
-  const user = getUser(session.userId);
-  const project = getProject(params.id);
+  const user = getUser(session.userId) as any;
+  const project = getProject(id);
 
   if (!project || !user || !canAccessProject(user, project)) {
     return new NextResponse(JSON.stringify({ error: 'Not found' }), {

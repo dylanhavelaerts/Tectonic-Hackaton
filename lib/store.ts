@@ -128,27 +128,27 @@ export function getLog(limit = 100) {
   return store.log.slice(-limit).reverse();
 }
 
-export function getUsers() {
+export function getUsers(): typeof usersData {
   return getStore().users;
 }
 
-export function getUser(id: string) {
+export function getUser(id: string): typeof usersData[0] | undefined {
   return getStore().users.find((u) => u.id === id);
 }
 
-export function getClients() {
+export function getClients(): typeof clientsData {
   return getStore().clients;
 }
 
-export function getClient(id: string) {
+export function getClient(id: string): typeof clientsData[0] | undefined {
   return getStore().clients.find((c) => c.id === id);
 }
 
-export function getSources() {
+export function getSources(): typeof sourcesData {
   return getStore().sources;
 }
 
-export function getSource(id: string) {
+export function getSource(id: string): typeof sourcesData[0] | undefined {
   return getStore().sources.find((s) => s.id === id);
 }
 

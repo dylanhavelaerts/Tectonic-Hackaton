@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { email, password } = schema.parse(body);
 
-    const users = getUsers();
+    const users = getUsers() as any[];
     const user = users.find((u) => u.email === email);
     if (!user) {
       return new NextResponse(JSON.stringify({ error: 'Invalid credentials' }), {
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const token = await signSession(user);
+    const token = await signSession(user as any);
     const response = NextResponse.json({ user: { id: user.id, name: user.name, email: user.email } });
     response.cookies.set('ripple_session', token, {
       httpOnly: true,

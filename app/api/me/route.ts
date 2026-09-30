@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const user = getUser(session.userId);
+  const user = getUser(session.userId) as any;
   if (!user) {
     return new NextResponse(JSON.stringify({ error: 'Not found' }), {
       status: 404,

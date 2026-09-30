@@ -15,8 +15,9 @@ import { scoreProject } from '@/lib/scoring';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await getSession(req);
   if (!session) {
     return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
@@ -25,8 +26,8 @@ export async function GET(
     });
   }
 
-  const user = getUser(session.userId);
-  const project = getProject(params.id);
+  const user = getUser(session.userId) as any;
+  const project = getProject(id);
 
   if (!project || !user || !canAccessProject(user, project)) {
     return new NextResponse(JSON.stringify({ error: 'Not found' }), {
@@ -35,8 +36,8 @@ export async function GET(
     });
   }
 
-  const sources = getSources();
-  const users = getUsers();
+  const sources = getSources() as any[];
+  const users = getUsers() as any[];
   const facts = getFacts(project.id);
   const scores = scoreProject(project, sources, users, facts, '2026-09-30');
   const questions = getQuestions(project.id);

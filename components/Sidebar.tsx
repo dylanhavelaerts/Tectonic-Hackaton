@@ -15,6 +15,7 @@ export default function Sidebar({
   const [projects, setProjects] = useState([]);
   const [showNewProject, setShowNewProject] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -33,6 +34,11 @@ export default function Sidebar({
     fetchProjects();
   }, []);
 
+  const handleSelectProject = (id: string) => {
+    setSelected(id);
+    onSelectProject(id);
+  };
+
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' });
     router.push('/login');
@@ -47,57 +53,60 @@ export default function Sidebar({
   };
 
   return (
-    <div
-      className="w-96 bg-slate-50 border-r border-slate-200 flex flex-col"
-      style={{ width: '420px' }}
-    >
-      <div className="p-6 border-b border-slate-200">
-        <h1 className="text-2xl font-bold text-slate-900">Ripple</h1>
-      </div>
-
-      <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-        <div>
-          <p className="font-medium text-slate-900">{user.name}</p>
-          <p className="text-sm text-slate-600">{user.role}</p>
+    <div className="flex flex-col h-full bg-surface">
+      {/* Header: 48px with ripple mark + title + user chip */}
+      <div className="h-12 px-4 border-b border-line flex items-center justify-between gap-3 shrink-0">
+        <div className="flex items-center gap-2">
+          {/* Ripple mark: 3 concentric circles */}
+          <svg width="20" height="20" viewBox="0 0 20 20" className="text-ink">
+            <circle cx="10" cy="10" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <circle cx="10" cy="10" r="9" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+          <span className="font-semibold text-text">Ripple</span>
         </div>
+        <div className="text-xs text-muted truncate">{user.name.split(' ')[0]} · {user.role}</div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6">
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto flex flex-col">
+        <div className="p-4 space-y-4">
           <button
             onClick={() => setShowNewProject(true)}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition mb-6"
+            className="w-full bg-primary hover:bg-primary-hover text-white text-sm font-medium py-2 px-3 rounded-[4px] transition"
           >
             + New project
           </button>
 
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Projects
-            </p>
-            {loading ? (
-              <p className="text-sm text-slate-600">Loading...</p>
-            ) : projects.length === 0 ? (
-              <p className="text-sm text-slate-600">No projects yet</p>
-            ) : (
-              projects.map((p: any) => (
+          {loading ? (
+            <p className="text-xs text-muted">Loading…</p>
+          ) : projects.length === 0 ? (
+            <p className="text-xs text-muted">No projects yet</p>
+          ) : (
+            <div className="space-y-1">
+              {projects.map((p: any) => (
                 <button
                   key={p.id}
-                  onClick={() => onSelectProject(p.id)}
-                  className="w-full text-left p-3 rounded hover:bg-slate-200 transition text-sm text-slate-900 font-medium"
+                  onClick={() => handleSelectProject(p.id)}
+                  className={`w-full text-left px-3 py-2 text-sm rounded-[4px] transition ${
+                    selected === p.id
+                      ? 'bg-primary-subtle text-primary font-medium'
+                      : 'text-text hover:bg-subtle'
+                  }`}
                 >
                   {p.name}
                 </button>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="p-6 border-t border-slate-200">
+      {/* Footer */}
+      <div className="p-4 border-t border-line shrink-0">
         <button
           onClick={handleLogout}
-          className="w-full text-slate-600 hover:text-slate-900 text-sm font-medium transition"
+          className="w-full text-xs text-muted hover:text-text transition font-medium"
         >
           Log out
         </button>

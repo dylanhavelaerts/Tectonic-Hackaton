@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const user = getUser(session.userId);
+  const user = getUser(session.userId) as any;
   if (!user) {
     return new NextResponse(JSON.stringify({ error: 'Not found' }), {
       status: 404,
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       id: s.id,
       type: s.type,
       title: s.title,
-      owner: s.ownerId ? getUser(s.ownerId)?.name : null,
+      owner: s.ownerId ? (getUser(s.ownerId) as any)?.name : null,
       date: s.lastEdited,
     }))
   );

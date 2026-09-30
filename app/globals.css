@@ -3,11 +3,50 @@
 @tailwind utilities;
 
 :root {
-  --sdworx-navy: #1d2830;
-  --sdworx-red: #f1002f;
-  --sdworx-yellow: #ffbe00;
-  --sdworx-blue: #006dd8;
-  --sdworx-ink: #303642;
+  /* SD Worx Ignite palette */
+  --color-ink: #001c52;
+  --color-text: #1d2830;
+  --color-muted: #575757;
+  --color-page: #f4f5f8;
+  --color-surface: #ffffff;
+  --color-subtle: #fbfcfc;
+  --color-line: #d9dbdd;
+  --color-primary: #006dd8;
+  --color-primary-hover: #0087f3;
+  --color-primary-soft: #d9f1ff;
+  --color-primary-subtle: #effaff;
+  --color-human: #da3300;
+  --color-human-hover: #e84c1d;
+  --color-human-subtle: #fff4ef;
+  --color-ok: #007900;
+  --color-ok-soft: #d6fad6;
+  --color-ok-subtle: #f1fcf0;
+  --color-warn: #b87c00;
+  --color-warn-soft: #fff7ea;
+  --color-bad: #e90040;
+  --color-bad-soft: #ffe3e3;
+  --color-bad-subtle: #fff3f4;
+
+  --radius-sm: 2px;
+  --radius: 4px;
+  --radius-lg: 8px;
+
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-text);
+  font-feature-settings: "tnum" 1, "ss01" 1;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 * {
@@ -19,9 +58,4 @@
 html,
 body {
   height: 100%;
-}
-
-body {
-  background: white;
-  color: var(--sdworx-ink);
 }

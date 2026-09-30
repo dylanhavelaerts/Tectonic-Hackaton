@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const projects = getProjects().filter((p) => isMember(getUser(session.userId)!, p));
+  const projects = getProjects().filter((p) => isMember(getUser(session.userId)! as any, p));
   return NextResponse.json(projects);
 }
 
