@@ -13,7 +13,7 @@ export async function signSession(user: User): Promise<string> {
 
 export async function verifySession(token: string): Promise<{ userId: string; email: string } | null> {
   try {
-    const verified = await jose.jwtVerify(token, secret);
+    const verified = await jose.jwtVerify(token, secret, { algorithms: ['HS256'] });
     return verified.payload as { userId: string; email: string };
   } catch {
     return null;
