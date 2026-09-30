@@ -1,0 +1,6 @@
+[
+  {"id":"u-lotte","name":"Lotte Janssens","email":"lotte@ripple.demo","role":"consultant","country":"BE","clientIds":["c-noord","c-verhaegen"],"expertise":[],"team":"BE SME Payroll – PC 200"},
+  {"id":"u-karim","name":"Karim El Idrissi","email":"karim@ripple.demo","role":"teamlead","country":"BE","clientIds":["c-noord","c-verhaegen"],"expertise":[],"team":"BE SME Payroll – PC 200"},
+  {"id":"u-pieter","name":"Pieter De Smet","email":"pieter@ripple.demo","role":"expert","country":"BE","clientIds":[],"expertise":["indexation","PC 200","centenindex"],"team":"BE Legal & Social Law"},
+  {"id":"u-sergio","name":"Sergio Martens","email":"sergio@ripple.demo","role":"consultant","country":"BE","clientIds":[],"expertise":[],"team":"BE SME Payroll – PC 124"}
+]

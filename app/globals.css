@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sdworx-navy: #1d2830;
+  --sdworx-red: #f1002f;
+  --sdworx-yellow: #ffbe00;
+  --sdworx-blue: #006dd8;
+  --sdworx-ink: #303642;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: white;
+  color: var(--sdworx-ink);
+}
