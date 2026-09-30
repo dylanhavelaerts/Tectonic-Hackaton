@@ -17,7 +17,9 @@ npm run dev
 # http://localhost:3000/login
 ```
 
-Demo users: `lotte@ripple.demo`, `karim@ripple.demo`, `pieter@ripple.demo`, `sergio@ripple.demo` · password `<name>123`.
+Demo users: `lotte@ripple.demo`, `karim@ripple.demo`, `pieter@ripple.demo`, `sergio@ripple.demo`.
+Passwords are not in the repo: set `DEMO_PW_HASH_<NAME>` in `.env.local` (see `.env.example`) using
+`node scripts/hash-pw.mjs <password>`.
 
 ## Stack
 

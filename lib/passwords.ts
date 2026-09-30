@@ -1,14 +1,13 @@
 import crypto from 'crypto';
 
-export function verifyPassword(
-  password: string,
-  hash: string
-): boolean {
+// Format: "<salt hex>:<scrypt hash hex>" — salt bytes decoded from hex, same as scripts/hash-pw.mjs
+export function verifyPassword(password: string, stored: string): boolean {
   try {
-    const [saltHex, hashHex] = hash.split(':');
-    const salt = Buffer.from(saltHex, 'hex');
-    const computed = crypto.scryptSync(password, salt, 32).toString('hex');
-    return crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(hashHex));
+    const [saltHex, hashHex] = stored.split(':');
+    if (!saltHex || !hashHex) return false;
+    const expected = Buffer.from(hashHex, 'hex');
+    const computed = crypto.scryptSync(password, Buffer.from(saltHex, 'hex'), expected.length);
+    return crypto.timingSafeEqual(computed, expected);
   } catch {
     return false;
   }

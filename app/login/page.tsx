@@ -85,15 +85,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-line">
-            <p className="text-xs text-muted text-center mb-4">Demo users:</p>
-            <div className="space-y-1 text-xs text-muted">
-              <p><strong className="text-text">lotte@ripple.demo</strong> consultant</p>
-              <p><strong className="text-text">karim@ripple.demo</strong> teamlead</p>
-              <p><strong className="text-text">pieter@ripple.demo</strong> expert</p>
-            </div>
-            <p className="text-xs text-muted mt-3">Password: <code className="font-mono">&lt;name&gt;123</code></p>
-          </div>
         </div>
       </div>
     </div>
