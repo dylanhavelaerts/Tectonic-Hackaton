@@ -1,56 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSession } from '@/lib/session';
-import { getUser, getProject, getProjects, createProject } from '@/lib/store';
+import { badRequest, currentUser, notFound, readJson, unauthorized } from '@/lib/api';
 import { isMember } from '@/lib/authz';
+import { createProject, getClient, getProjects, getUser } from '@/lib/store';
 
-const createSchema = z.object({
-  name: z.string(),
-  clientId: z.string(),
-  question: z.string(),
-  memberIds: z.array(z.string()),
+const schema = z.object({
+  name: z.string().trim().min(1).max(120),
+  clientId: z.string().max(40),
+  question: z.string().trim().min(1).max(500),
+  memberIds: z.array(z.string().max(40)).max(20),
 });
 
 export async function GET(req: NextRequest) {
-  const session = await getSession(req);
-  if (!session) {
-    return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
-
-  const projects = getProjects().filter((p) => isMember(getUser(session.userId)! as any, p));
-  return NextResponse.json(projects);
+  const user = await currentUser(req);
+  if (!user) return unauthorized();
+  return NextResponse.json(
+    getProjects()
+      .filter((p) => isMember(user, p))
+      .map((p) => ({ id: p.id, name: p.name, clientName: getClient(p.clientId)?.name ?? '', sourceCount: p.sourceIds.length }))
+  );
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSession(req);
-  if (!session) {
-    return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
+  const user = await currentUser(req);
+  if (!user) return unauthorized();
+  const parsed = schema.safeParse(await readJson(req));
+  if (!parsed.success) return badRequest();
+  const { name, clientId, question, memberIds } = parsed.data;
 
-  try {
-    const body = await req.json();
-    const { name, clientId, question, memberIds } = createSchema.parse(body);
+  // Lead must be assigned to the client; unknown client and foreign client look the same.
+  if (!getClient(clientId) || !user.clientIds.includes(clientId)) return notFound();
+  if (memberIds.some((id) => !getUser(id))) return badRequest();
 
-    const project = createProject({
-      name,
-      clientId,
-      question,
-      leadId: session.userId,
-      memberIds: [session.userId, ...memberIds],
-      sourceIds: [],
-    });
-
-    return NextResponse.json(project);
-  } catch (error) {
-    return new NextResponse(JSON.stringify({ error: 'Invalid request' }), {
-      status: 400,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
+  const project = createProject({
+    name,
+    clientId,
+    question,
+    leadId: user.id,
+    memberIds: [...new Set([user.id, ...memberIds])],
+    sourceIds: [],
+  });
+  return NextResponse.json({ id: project.id });
 }

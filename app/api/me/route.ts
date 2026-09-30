@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/session';
-import { getUser } from '@/lib/store';
+import { currentUser, unauthorized } from '@/lib/api';
 
 export async function GET(req: NextRequest) {
-  const session = await getSession(req);
-  if (!session) {
-    return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
-
-  const user = getUser(session.userId) as any;
-  if (!user) {
-    return new NextResponse(JSON.stringify({ error: 'Not found' }), {
-      status: 404,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
-
-  return NextResponse.json(user);
+  const user = await currentUser(req);
+  if (!user) return unauthorized();
+  const { id, name, email, role, team } = user;
+  return NextResponse.json({ id, name, email, role, team });
 }

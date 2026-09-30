@@ -1,72 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSession } from '@/lib/session';
-import { getProject, getUser, updateProject } from '@/lib/store';
-import { canAccessProject } from '@/lib/authz';
+import { badRequest, currentUser, notFound, readJson, unauthorized } from '@/lib/api';
+import { canSeeSource, isLead } from '@/lib/authz';
+import { analyseSource } from '@/lib/analysis';
+import { addLog, getProject, getSource } from '@/lib/store';
 
-const schema = z.object({
-  sourceIds: z.array(z.string()),
-});
+const schema = z.object({ sourceIds: z.array(z.string().max(40)).min(1).max(50) });
 
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const session = await getSession(req);
-  if (!session) {
-    return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
-
-  const user = getUser(session.userId) as any;
-  const project = getProject(id);
-
-  if (!project || !user || project.leadId !== user.id) {
-    return new NextResponse(JSON.stringify({ error: 'Not found' }), {
-      status: 404,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
-
-  // Rate limit: 20 calls / 10 min
+// 20 analyse calls / 10 min / user
+const WINDOW_MS = 10 * 60 * 1000;
+const calls = new Map<string, number[]>();
+function rateLimited(userId: string) {
   const now = Date.now();
-  const key = `${session.userId}-analyse`;
-  const limit = rateLimitMap.get(key);
-  if (limit) {
-    if (now < limit.resetAt) {
-      if (limit.count >= 20) {
-        return new NextResponse(JSON.stringify({ error: 'Rate limited' }), {
-          status: 429,
-          headers: { 'content-type': 'application/json' },
-        });
-      }
-      limit.count++;
-    } else {
-      rateLimitMap.set(key, { count: 1, resetAt: now + 10 * 60 * 1000 });
-    }
-  } else {
-    rateLimitMap.set(key, { count: 1, resetAt: now + 10 * 60 * 1000 });
+  const recent = (calls.get(userId) ?? []).filter((t) => now - t < WINDOW_MS);
+  if (recent.length >= 20) return true;
+  calls.set(userId, [...recent, now]);
+  return false;
+}
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const user = await currentUser(req);
+  if (!user) return unauthorized();
+  const project = getProject(id);
+  if (!project || !isLead(user, project)) return notFound();
+
+  const parsed = schema.safeParse(await readJson(req));
+  if (!parsed.success) return badRequest();
+  if (rateLimited(user.id)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+
+  // ACL filter before analysis: only sources this user may see.
+  const sources = parsed.data.sourceIds.map(getSource);
+  if (sources.some((s) => !s || !canSeeSource(user, s))) return notFound();
+
+  const added = sources.filter((s) => s && !project.sourceIds.includes(s.id));
+  for (const s of added) {
+    project.sourceIds.push(s!.id);
+    project.analysis[s!.id] = analyseSource(s!);
   }
-
-  try {
-    const body = await req.json();
-    const { sourceIds } = schema.parse(body);
-
-    updateProject(project.id, {
-      ...project,
-      sourceIds: [...new Set([...project.sourceIds, ...sourceIds])],
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return new NextResponse(JSON.stringify({ error: 'Invalid request' }), {
-      status: 400,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
+  addLog(user.id, `added ${added.length} source${added.length === 1 ? '' : 's'}`, project.id, project.id);
+  return NextResponse.json({ added: added.length });
 }

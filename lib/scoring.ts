@@ -1,146 +1,105 @@
-import { Source, User, Project, VerifiedFact, ScoreResult } from './types';
+import { Claim, Conflict, ScoreResult, Source, User, VerifiedFact } from './types';
 
-export function scoreSource(
-  source: Source,
-  ctx: {
-    clientId: string;
-    leadId: string;
-    users: User[];
-    today: string;
-    verifiedFacts: VerifiedFact[];
-  }
-): ScoreResult {
-  const parts = {
-    authority: 0,
-    recency: 0,
-    owner: 0,
-    scope: 0,
-    consistency: 0,
-  };
-  const why: string[] = [];
+export const TODAY = '2026-09-30';
 
-  // Authority: owner expertise on indexation, assigned to client, same team, other, none
-  if (source.ownerId) {
-    const owner = ctx.users.find((u) => u.id === source.ownerId);
-    if (owner?.expertise.includes('indexation')) {
-      parts.authority = 30;
-      why.push('Author expert in indexation (+30)');
-    } else if (owner?.clientIds.includes(ctx.clientId)) {
-      parts.authority = 25;
-      why.push('Author assigned to project client (+25)');
-    } else if (owner?.team === ctx.users.find((u) => u.id === ctx.leadId)?.team) {
-      parts.authority = 15;
-      why.push('Author same team as lead (+15)');
+export interface ScoreCtx {
+  clientId: string;
+  clientCountry: string;
+  leadId: string;
+  users: User[];
+  today: string;
+  facts: VerifiedFact[];
+  openConflictClaims: string[];
+  claims?: Claim[]; // defaults to source.cachedClaims
+}
+
+export function scoreSource(source: Source, ctx: ScoreCtx): ScoreResult {
+  const claims = ctx.claims ?? source.cachedClaims;
+  const owner = source.ownerId ? ctx.users.find((u) => u.id === source.ownerId) : undefined;
+  const lead = ctx.users.find((u) => u.id === ctx.leadId);
+
+  // Authority
+  let authority = 0;
+  let authorityWhy = 'No owner';
+  if (owner) {
+    if (owner.expertise.includes('indexation')) {
+      authority = 30;
+      authorityWhy = `${owner.name} is an indexation expert`;
+    } else if (owner.clientIds.includes(ctx.clientId)) {
+      authority = 25;
+      authorityWhy = `${owner.name} is assigned to this client`;
+    } else if (lead && owner.team === lead.team) {
+      authority = 15;
+      authorityWhy = `${owner.name} is on the lead's team`;
     } else {
-      parts.authority = 5;
-      why.push('Author other team (+5)');
-    }
-  } else {
-    parts.authority = 0;
-    why.push('No owner identified (0)');
-  }
-
-  // Teams sources max 15
-  if (source.type === 'teams' && parts.authority > 15) {
-    parts.authority = 15;
-    why[why.length - 1] = why[why.length - 1].replace(/\(\+\d+\)/, '(+15, teams capped)');
-  }
-
-  // Recency: <90d from today, <365d, else 5
-  const editDate = new Date(source.lastEdited);
-  const today = new Date(ctx.today);
-  const daysOld = Math.floor((today.getTime() - editDate.getTime()) / (1000 * 60 * 60 * 24));
-  if (daysOld < 90) {
-    parts.recency = 25;
-    why.push(`Edited ${daysOld}d ago (+25)`);
-  } else if (daysOld < 365) {
-    parts.recency = 15;
-    why.push(`Edited ${daysOld}d ago (+15)`);
-  } else {
-    parts.recency = 5;
-    why.push(`Edited ${daysOld}d ago (+5)`);
-  }
-
-  // Owner: present = 15, none = 0
-  parts.owner = source.ownerId ? 15 : 0;
-  if (parts.owner > 0) {
-    why.push('Source has owner (+15)');
-  }
-
-  // Scope: same country + (clientId null or = projectClient) = 15, else 0
-  if (source.country === ctx.users.find((u) => u.id === ctx.leadId)?.country) {
-    if (!source.clientId || source.clientId === ctx.clientId) {
-      parts.scope = 15;
-      why.push('Scope: same country & client (+15)');
+      authority = 5;
+      authorityWhy = `${owner.name} is outside the team`;
     }
   }
-
-  // Consistency: check against verified facts
-  const conflictingFacts = ctx.verifiedFacts.filter((f) => {
-    const sourceClaim = source.cachedClaims.find((c) => c.claim === f.claim);
-    return sourceClaim && sourceClaim.value !== f.value;
-  });
-
-  if (conflictingFacts.length === 0) {
-    parts.consistency = 15;
-    why.push('No conflicts with verified facts (+15)');
-  } else {
-    parts.consistency = 0;
-    why.push(`Contradicts ${conflictingFacts.length} verified fact(s) (0)`);
+  if (source.type === 'teams' && authority > 15) {
+    authority = 15;
+    authorityWhy += ' (chat message, max 15)';
   }
 
-  // Apply consistency cap for open conflicts
-  if (ctx.verifiedFacts.length === 0) {
-    // No verified facts yet, open conflict scenario
-    const allClaims = source.cachedClaims.map((c) => c.claim);
-    const hasConflicts = allClaims.length > 0; // simplified for demo
-    if (hasConflicts) {
-      parts.consistency = Math.min(parts.consistency, 7);
-      if (parts.consistency === 15) {
-        parts.consistency = 7;
-        why[why.length - 1] = 'Open conflict: other sources disagree (+7)';
-      }
-    }
+  // Recency
+  const days = Math.floor((Date.parse(ctx.today) - Date.parse(source.lastEdited)) / 86_400_000);
+  const recency = days < 90 ? 25 : days < 365 ? 15 : 5;
+
+  // Owner
+  const ownerPts = owner ? 15 : 0;
+
+  // Scope
+  const scope =
+    source.country === ctx.clientCountry && (source.clientId === null || source.clientId === ctx.clientId) ? 15 : 0;
+
+  // Consistency
+  const contradicted = ctx.facts.find((f) => claims.some((c) => c.claim === f.claim && c.value !== f.value));
+  const confirmed = ctx.facts.find((f) => claims.some((c) => c.claim === f.claim && c.value === f.value));
+  let consistency = 15;
+  let consistencyWhy = confirmed ? 'Matches the verified answer' : 'No conflicts';
+  if (contradicted) {
+    consistency = 0;
+    consistencyWhy = 'Contradicts the verified answer, capped at 40';
+  } else if (claims.some((c) => ctx.openConflictClaims.includes(c.claim))) {
+    consistency = 7;
+    consistencyWhy = 'Other sources say something different';
   }
 
-  // Cap consistency at 40 total if contradicts verified fact
-  const total =
-    parts.authority + parts.recency + parts.owner + parts.scope + parts.consistency;
-  let finalTotal = total;
-
-  if (conflictingFacts.length > 0) {
-    finalTotal = Math.min(total, 40);
-  }
+  const sum = authority + recency + ownerPts + scope + consistency;
+  const total = contradicted ? Math.min(sum, 40) : sum;
 
   return {
-    total: finalTotal,
-    parts,
-    why,
+    total,
+    parts: { authority, recency, owner: ownerPts, scope, consistency },
+    why: [
+      { factor: 'Authority', points: authority, reason: authorityWhy },
+      { factor: 'Recency', points: recency, reason: `Last edited ${days} days ago` },
+      { factor: 'Owner', points: ownerPts, reason: owner ? 'Has a named owner' : 'Nobody owns this document' },
+      {
+        factor: 'Scope',
+        points: scope,
+        reason: scope ? 'Same country and client' : 'Different country or client',
+      },
+      { factor: 'Consistency', points: consistency, reason: consistencyWhy },
+    ],
   };
 }
 
-export function scoreProject(
-  project: Project,
-  sources: Source[],
-  users: User[],
-  facts: VerifiedFact[],
-  today: string
-) {
-  const scores = project.sourceIds.map((sourceId) => {
-    const source = sources.find((s) => s.id === sourceId);
-    if (!source) return null;
-
-    return {
-      sourceId,
-      ...scoreSource(source, {
-        clientId: project.clientId,
-        leadId: project.leadId,
-        users,
-        today,
-        verifiedFacts: facts.filter((f) => f.projectId === project.id),
-      }),
-    };
-  });
-
-  return scores.filter(Boolean);
+/** Same claim, different value, and no verified fact for that claim yet. */
+export function findConflicts(
+  items: { sourceId: string; claims: Claim[] }[],
+  facts: VerifiedFact[]
+): Conflict[] {
+  const byClaim = new Map<string, Conflict>();
+  for (const { sourceId, claims } of items) {
+    for (const c of claims) {
+      const entry = byClaim.get(c.claim) ?? { claim: c.claim, values: [], quotes: [] };
+      if (!entry.values.includes(c.value)) entry.values.push(c.value);
+      entry.quotes.push({ sourceId, value: c.value, quote: c.quote });
+      byClaim.set(c.claim, entry);
+    }
+  }
+  return [...byClaim.values()].filter(
+    (c) => c.values.length > 1 && !facts.some((f) => f.claim === c.claim)
+  );
 }

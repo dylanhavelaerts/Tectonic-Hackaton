@@ -1,8 +1,11 @@
+export const CLAIMS = ['centenindex_applies_pc200', 'jan2027_index_forecast_pc200'] as const;
+export type ClaimKey = (typeof CLAIMS)[number];
+
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'consultant' | 'teamlead' | 'expert';
+  role: string;
   country: string;
   clientIds: string[];
   expertise: string[];
@@ -25,7 +28,7 @@ export interface Claim {
 
 export interface Source {
   id: string;
-  type: 'doc' | 'client_agreement' | 'teams';
+  type: string; // doc | client_agreement | teams
   title: string;
   country: string;
   clientId: string | null;
@@ -33,6 +36,12 @@ export interface Source {
   lastEdited: string;
   content: string;
   cachedClaims: Claim[];
+}
+
+export interface SourceAnalysis {
+  claims: Claim[];
+  mode: 'live' | 'cached';
+  suspicious: boolean;
 }
 
 export interface Project {
@@ -43,14 +52,7 @@ export interface Project {
   leadId: string;
   memberIds: string[];
   sourceIds: string[];
-  analysis: Record<
-    string,
-    {
-      claims: Claim[];
-      mode: 'live' | 'cached';
-      suspicious: boolean;
-    }
-  >;
+  analysis: Record<string, SourceAnalysis>;
   createdAt: string;
 }
 
@@ -77,18 +79,31 @@ export interface VerifiedFact {
 export interface LogEntry {
   at: string;
   userId: string;
-  action: string;
+  action: string; // plain sentence fragment, e.g. "added 6 sources"
   targetId: string;
+  projectId: string | null;
+}
+
+export interface WhyRow {
+  factor: 'Authority' | 'Recency' | 'Owner' | 'Scope' | 'Consistency';
+  points: number;
+  reason: string;
 }
 
 export interface ScoreResult {
   total: number;
-  parts: {
-    authority: number;
-    recency: number;
-    owner: number;
-    scope: number;
-    consistency: number;
-  };
-  why: string[];
+  parts: { authority: number; recency: number; owner: number; scope: number; consistency: number };
+  why: WhyRow[];
+}
+
+export interface ConflictQuote {
+  sourceId: string;
+  value: string;
+  quote: string;
+}
+
+export interface Conflict {
+  claim: string;
+  values: string[];
+  quotes: ConflictQuote[];
 }

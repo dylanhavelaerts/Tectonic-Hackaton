@@ -1,18 +1,15 @@
-import { User, Project } from './types';
+import { Project, Question, Source, User } from './types';
 
-export function isMember(user: any, project: Project): boolean {
-  return project.memberIds.includes(user.id) || project.leadId === user.id;
-}
+export const isMember = (user: User, project: Project) =>
+  project.leadId === user.id || project.memberIds.includes(user.id);
 
-export function canAccessProject(user: any, project: Project): boolean {
-  return isMember(user, project);
-}
+export const canAccessProject = isMember;
+export const isLead = (user: User, project: Project) => project.leadId === user.id;
 
-export function canVerify(user: any, question: { expertId: string }): boolean {
-  return user.id === question.expertId;
-}
+/** Only the assigned expert, and only while the question is open. */
+export const canVerify = (user: User, question: Question) =>
+  question.expertId === user.id && question.status === 'open';
 
-export function visibleSources(user: any, sourceCountry: string, sourceClientId: string | null): boolean {
-  // Same country or clientId in user.clientIds
-  return sourceCountry === user.country || !!(sourceClientId && user.clientIds.includes(sourceClientId));
-}
+/** Catalog visibility: same country, or a client the user is assigned to. */
+export const canSeeSource = (user: User, source: Source) =>
+  source.country === user.country || (source.clientId !== null && user.clientIds.includes(source.clientId));

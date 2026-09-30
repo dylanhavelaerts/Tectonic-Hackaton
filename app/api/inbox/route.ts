@@ -1,27 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/session';
-import { getUser, getQuestions } from '@/lib/store';
+import { currentUser, unauthorized } from '@/lib/api';
+import { projectView } from '@/lib/analysis';
+import { getProject, getQuestions, getUser } from '@/lib/store';
 
+// Questions assigned to me. The assigned expert sees the question and its conflicts, not the whole project.
 export async function GET(req: NextRequest) {
-  const session = await getSession(req);
-  if (!session) {
-    return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
+  const user = await currentUser(req);
+  if (!user) return unauthorized();
 
-  const user = getUser(session.userId) as any;
-  if (!user) {
-    return new NextResponse(JSON.stringify({ error: 'Not found' }), {
-      status: 404,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
-
-  const questions = getQuestions().filter(
-    (q) => q.expertId === session.userId && q.status === 'open'
+  return NextResponse.json(
+    getQuestions()
+      .filter((q) => q.expertId === user.id)
+      .map((q) => {
+        const project = getProject(q.projectId);
+        const view = project ? projectView(project) : null;
+        const titles = Object.fromEntries((view?.sources ?? []).map((s) => [s.id, s.title]));
+        return {
+          id: q.id,
+          text: q.text,
+          status: q.status,
+          createdAt: q.createdAt,
+          askedByName: getUser(q.askedBy)?.name ?? '',
+          projectName: project?.name ?? '',
+          conflicts: (view?.conflicts ?? []).map((c) => ({
+            ...c,
+            quotes: c.quotes.map((x) => ({ ...x, title: titles[x.sourceId] ?? x.sourceId })),
+          })),
+        };
+      })
   );
-
-  return NextResponse.json(questions);
 }

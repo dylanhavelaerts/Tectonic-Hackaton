@@ -1,50 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getUser, getUsers } from '@/lib/store';
+import { getUsers } from '@/lib/store';
 import { verifyPassword } from '@/lib/passwords';
 import { signSession } from '@/lib/session';
+import { readJson } from '@/lib/api';
 
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string(),
-});
+const schema = z.object({ email: z.string().email().max(200), password: z.string().min(1).max(200) });
 
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { email, password } = schema.parse(body);
+  const parsed = schema.safeParse(await readJson(req));
+  const invalid = NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+  if (!parsed.success) return invalid;
 
-    const users = getUsers() as any[];
-    const user = users.find((u) => u.email === email);
-    if (!user) {
-      return new NextResponse(JSON.stringify({ error: 'Invalid credentials' }), {
-        status: 401,
-        headers: { 'content-type': 'application/json' },
-      });
-    }
+  const user = getUsers().find((u) => u.email === parsed.data.email.toLowerCase());
+  const hash = user ? process.env[`DEMO_PW_HASH_${user.id.replace('u-', '').toUpperCase()}`] : undefined;
+  if (!user || !hash || !verifyPassword(parsed.data.password, hash)) return invalid;
 
-    const hashEnv = `DEMO_PW_HASH_${user.name.split(' ')[0].toUpperCase()}`;
-    const hash = process.env[hashEnv];
-    if (!hash || !verifyPassword(password, hash)) {
-      return new NextResponse(JSON.stringify({ error: 'Invalid credentials' }), {
-        status: 401,
-        headers: { 'content-type': 'application/json' },
-      });
-    }
-
-    const token = await signSession(user as any);
-    const response = NextResponse.json({ user: { id: user.id, name: user.name, email: user.email } });
-    response.cookies.set('ripple_session', token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 2 * 60 * 60,
-    });
-    return response;
-  } catch (error) {
-    return new NextResponse(JSON.stringify({ error: 'Invalid request' }), {
-      status: 400,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set('ripple_session', await signSession(user), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 2 * 60 * 60,
+  });
+  return res;
 }

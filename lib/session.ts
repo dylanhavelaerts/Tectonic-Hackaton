@@ -1,9 +1,8 @@
 import * as jose from 'jose';
 import { User } from './types';
 
-const secret = new TextEncoder().encode(
-  process.env.SESSION_SECRET || 'dev-secret'
-);
+if (!process.env.SESSION_SECRET) throw new Error('SESSION_SECRET is not set');
+const secret = new TextEncoder().encode(process.env.SESSION_SECRET);
 
 export async function signSession(user: User): Promise<string> {
   return new jose.SignJWT({ userId: user.id, email: user.email })

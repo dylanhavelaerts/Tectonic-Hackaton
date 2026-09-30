@@ -1,105 +1,53 @@
 import { describe, it, expect } from 'vitest';
-import { scoreSource } from './scoring';
+import { findConflicts, scoreSource, TODAY } from './scoring';
 import { Source, User, VerifiedFact } from './types';
+import usersJson from '../data/users.json';
+import sourcesJson from '../data/sources.json';
 
-describe('Scoring', () => {
-  const users: User[] = [
-    {
-      id: 'u-lotte',
-      name: 'Lotte',
-      email: 'lotte@test.com',
-      role: 'consultant',
-      country: 'BE',
-      clientIds: ['c-noord'],
-      expertise: [],
-      team: 'BE SME Payroll – PC 200',
-    },
-    {
-      id: 'u-pieter',
-      name: 'Pieter',
-      email: 'pieter@test.com',
-      role: 'expert',
-      country: 'BE',
-      clientIds: [],
-      expertise: ['indexation', 'centenindex'],
-      team: 'BE Legal & Social Law',
-    },
-  ];
+const users = usersJson as User[];
+const sources = sourcesJson as Source[];
+const picked = ['d-01', 'd-05', 'k-01', 'd-02', 'm-01'].map((id) => sources.find((s) => s.id === id)!);
 
-  const d05: Source = {
-    id: 'd-05',
-    type: 'doc',
-    title: 'Legal memo',
-    country: 'BE',
-    clientId: null,
-    ownerId: 'u-pieter',
-    lastEdited: '2026-06-10',
-    content: 'centenindex applies',
-    cachedClaims: [{ claim: 'centenindex_applies_pc200', value: 'yes', quote: 'applies' }],
+const fact: VerifiedFact = {
+  id: 'f-1',
+  projectId: 'p-1',
+  claim: 'centenindex_applies_pc200',
+  value: 'yes',
+  statement: 'Centenindex overrides the side letter from Jan 2027.',
+  verifiedBy: 'u-pieter',
+  at: '2026-09-30T10:00:00Z',
+};
+
+function scores(facts: VerifiedFact[]) {
+  const conflicts = findConflicts(
+    picked.map((s) => ({ sourceId: s.id, claims: s.cachedClaims })),
+    facts
+  );
+  const ctx = {
+    clientId: 'c-noord',
+    clientCountry: 'BE',
+    leadId: 'u-lotte',
+    users,
+    today: TODAY,
+    facts,
+    openConflictClaims: conflicts.map((c) => c.claim),
   };
+  return Object.fromEntries(picked.map((s) => [s.id, scoreSource(s, ctx).total]));
+}
 
-  it('d-05 scores 82 before verify', () => {
-    const score = scoreSource(d05, {
-      clientId: 'c-noord',
-      leadId: 'u-lotte',
-      users,
-      today: '2026-09-30',
-      verifiedFacts: [],
-    });
-    expect(score.total).toBe(82); // 30 + 15 + 15 + 15 + 7
+describe('scoring', () => {
+  it('before verify: d-05 is top at 82', () => {
+    const s = scores([]);
+    expect(s).toEqual({ 'd-05': 82, 'd-01': 77, 'm-01': 77, 'k-01': 67, 'd-02': 47 });
+    expect(Math.max(...Object.values(s))).toBe(s['d-05']);
   });
 
-  it('d-05 scores 90 after Pieter verifies', () => {
-    const fact: VerifiedFact = {
-      id: 'vf-1',
-      projectId: 'p-1',
-      claim: 'centenindex_applies_pc200',
-      value: 'yes',
-      statement: 'Applies',
-      verifiedBy: 'u-pieter',
-      at: '2026-09-30T10:00:00Z',
-    };
-
-    const score = scoreSource(d05, {
-      clientId: 'c-noord',
-      leadId: 'u-lotte',
-      users,
-      today: '2026-09-30',
-      verifiedFacts: [fact],
-    });
-    expect(score.total).toBe(90); // 30 + 15 + 15 + 15 + 15
+  it('after verify: d-05 = 90', () => {
+    expect(scores([fact])['d-05']).toBe(90);
   });
 
-  it('conflicting source scores 40 after verify', () => {
-    const d01: Source = {
-      id: 'd-01',
-      type: 'doc',
-      title: 'Playbook',
-      country: 'BE',
-      clientId: null,
-      ownerId: 'u-lotte',
-      lastEdited: '2026-01-08',
-      content: 'no cap',
-      cachedClaims: [{ claim: 'centenindex_applies_pc200', value: 'no', quote: 'no cap' }],
-    };
-
-    const fact: VerifiedFact = {
-      id: 'vf-1',
-      projectId: 'p-1',
-      claim: 'centenindex_applies_pc200',
-      value: 'yes',
-      statement: 'Applies',
-      verifiedBy: 'u-pieter',
-      at: '2026-09-30T10:00:00Z',
-    };
-
-    const score = scoreSource(d01, {
-      clientId: 'c-noord',
-      leadId: 'u-lotte',
-      users,
-      today: '2026-09-30',
-      verifiedFacts: [fact],
-    });
-    expect(score.total).toBe(40); // capped
+  it('after verify: contradicting sources capped at 40', () => {
+    const s = scores([fact]);
+    for (const id of ['d-01', 'm-01', 'k-01', 'd-02']) expect(s[id]).toBe(40);
   });
 });
