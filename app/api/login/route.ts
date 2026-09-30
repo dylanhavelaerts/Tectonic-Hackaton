@@ -5,7 +5,7 @@ import { verifyPassword } from '@/lib/passwords';
 import { signSession } from '@/lib/session';
 import { readJson } from '@/lib/api';
 
-const schema = z.object({ email: z.string().email().max(200), password: z.string().min(1).max(200) });
+const schema = z.object({ email: z.email().max(200), password: z.string().min(1).max(200) });
 
 export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(await readJson(req));
